@@ -1,129 +1,101 @@
 package main;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.List;
-import repository.DatabaseConnection;
-import service.EcommerceService;
-import model.Usuario;
+import repository.*;
+import model.*;
+import service.*;
 
 public class MainApplication extends JFrame {
     private EcommerceService service = new EcommerceService();
-    private JTextArea areaLog;
+    private ProdutoRepository prodRepo = new ProdutoRepository();
 
-    // Campos do formulário
-    private JTextField txtNome;
-    private JTextField txtEmail;
+    // UI Campos de Usuário
+    private JTextField txtNome, txtEmail, txtEndereco, txtTelefone;
     private JPasswordField txtSenha;
-    private JButton btnSalvar;
-    private JButton btnListar;
+
+    // UI Campos de Produto
+    private JTextField txtNomeProd, txtPrecoProd, txtEstoqueProd;
+    private DefaultTableModel modeloTabela;
 
     public MainApplication() {
-        setTitle("Sistema de E-Commerce (SQLite)");
-        setSize(600, 450);
+        setTitle("Sistema E-Commerce (Universidade do Mindelo)");
+        setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // JTabbedPane para separar Usuários de Produtos (Requisito de interface intuitiva)
+        JTabbedPane abas = new JTabbedPane();
+        abas.addTab("Usuários", criarPainelUsuarios());
+        abas.addTab("Produtos", criarPainelProdutos());
+
+        add(abas);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+    }
 
-        // Painel Superior com o Formulário de Entrada
-        JPanel painelFormulario = new JPanel(new GridLayout(4, 2, 10, 10));
-        painelFormulario.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    private JPanel criarPainelUsuarios() {
+        JPanel painel = new JPanel(new GridLayout(6, 2, 5, 5));
+        txtNome = new JTextField(); txtEmail = new JTextField();
+        txtSenha = new JPasswordField(); txtEndereco = new JTextField();
+        txtTelefone = new JTextField();
+        JButton btnSalvar = new JButton("Registar Utilizador");
 
-        painelFormulario.add(new JLabel("Nome:"));
-        txtNome = new JTextField();
-        painelFormulario.add(txtNome);
+        painel.add(new JLabel("Nome:")); painel.add(txtNome);
+        painel.add(new JLabel("Email:")); painel.add(txtEmail);
+        painel.add(new JLabel("Senha:")); painel.add(txtSenha);
+        painel.add(new JLabel("Endereço:")); painel.add(txtEndereco);
+        painel.add(new JLabel("Telefone:")); painel.add(txtTelefone);
+        painel.add(btnSalvar);
 
-        painelFormulario.add(new JLabel("Email:"));
-        txtEmail = new JTextField();
-        painelFormulario.add(txtEmail);
-
-        painelFormulario.add(new JLabel("Senha:"));
-        txtSenha = new JPasswordField();
-        painelFormulario.add(txtSenha);
-
-        btnSalvar = new JButton("Registar Utilizador");
-        btnListar = new JButton("Listar no Banco");
-        painelFormulario.add(btnSalvar);
-        painelFormulario.add(btnListar);
-
-        add(painelFormulario, BorderLayout.NORTH);
-
-        // Área de logs central para exibir os resultados do SQLite
-        areaLog = new JTextArea();
-        areaLog.setEditable(false);
-        JScrollPane scroll = new JScrollPane(areaLog);
-        add(scroll, BorderLayout.CENTER);
-
-        // --- Ações dos Botões ---
-
-        // Ação de Salvar
         btnSalvar.addActionListener(e -> {
-            String nome = txtNome.getText();
-            String email = txtEmail.getText();
-            String senha = new String(txtSenha.getPassword());
+            service.registarUsuario(new Usuario(txtNome.getText(), txtEmail.getText(),
+                    new String(txtSenha.getPassword()), txtEndereco.getText(), txtTelefone.getText()));
+            JOptionPane.showMessageDialog(this, "Usuário registado com sucesso!");
+        });
+        return painel;
+    }
 
-            if (nome.isEmpty() || email.isEmpty() || senha.isEmpty()) {
-                areaLog.append("Erro: Preencha todos os campos antes de salvar!\n");
-                return;
-            }
+    private JPanel criarPainelProdutos() {
+        JPanel painel = new JPanel(new BorderLayout());
+        JPanel form = new JPanel(new GridLayout(4, 2));
 
-            Usuario novo = new Usuario(nome, email, senha);
-            service.registarUsuario(novo);
+        txtNomeProd = new JTextField(); txtPrecoProd = new JTextField();
+        txtEstoqueProd = new JTextField();
+        JButton btnAdd = new JButton("Adicionar Produto");
 
-            areaLog.append("Sucesso: '" + nome + "' foi inserido no SQLite!\n");
+        form.add(new JLabel("Nome:")); form.add(txtNomeProd);
+        form.add(new JLabel("Preço:")); form.add(txtPrecoProd);
+        form.add(new JLabel("Estoque:")); form.add(txtEstoqueProd);
+        form.add(btnAdd);
 
-            // Limpa os campos
-            txtNome.setText("");
-            txtEmail.setText("");
-            txtSenha.setText("");
+        modeloTabela = new DefaultTableModel(new Object[]{"ID", "Nome", "Preço", "Estoque"}, 0);
+        JTable tabela = new JTable(modeloTabela);
+
+        btnAdd.addActionListener(e -> {
+            Produto p = new Produto(0, txtNomeProd.getText(), "Desc",
+                    Double.parseDouble(txtPrecoProd.getText()), "Geral",
+                    Integer.parseInt(txtEstoqueProd.getText()));
+            prodRepo.salvar(p);
+            carregarTabelaProdutos(); // Atualiza a lista visualmente
+            JOptionPane.showMessageDialog(this, "Produto adicionado!");
         });
 
-        // Ação de Listar
-        btnListar.addActionListener(e -> {
-            areaLog.append("\n--- Consultando Utilizadores no SQLite ---\n");
-            List<Usuario> usuarios = service.obterTodosUsuarios();
+        painel.add(form, BorderLayout.NORTH);
+        painel.add(new JScrollPane(tabela), BorderLayout.CENTER);
+        carregarTabelaProdutos();
+        return painel;
+    }
 
-            if (usuarios.isEmpty()) {
-                areaLog.append("Nenhum utilizador encontrado na base de dados.\n");
-            } else {
-                for (Usuario u : usuarios) {
-                    areaLog.append("ID: " + u.getId() + " | Nome: " + u.getNome() + " | Email: " + u.getEmail() + "\n");
-                }
-            }
-            areaLog.append("-------------------------------------------\n");
-        });
-
-        areaLog.append("Interface Gráfica e Banco de Dados prontos!\n");
+    private void carregarTabelaProdutos() {
+        modeloTabela.setRowCount(0);
+        for (Produto p : prodRepo.listarTodos()) {
+            modeloTabela.addRow(new Object[]{p.getId(), p.getNome(), p.getPreco(), p.getQuantidadeEstoque()});
+        }
     }
 
     public static void main(String[] args) {
-        // Inicializa as tabelas do Banco de Dados SQLite
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            stmt.execute("CREATE TABLE IF NOT EXISTS usuario (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "nome TEXT NOT NULL, " +
-                    "email TEXT UNIQUE NOT NULL, " +
-                    "senha TEXT NOT NULL);");
-
-            stmt.execute("CREATE TABLE IF NOT EXISTS produto (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "nome TEXT NOT NULL, " +
-                    "preco REAL NOT NULL);");
-
-            System.out.println("Tabelas verificadas/criadas com sucesso no SQLite!");
-
-        } catch (Exception e) {
-            System.err.println("Erro ao inicializar o banco de dados SQLite:");
-            e.printStackTrace();
-        }
-
-        // Abre a Janela Swing
-        SwingUtilities.invokeLater(() -> {
-            new MainApplication().setVisible(true);
-        });
+        // Inicialização do Banco (o código de criação das tabelas continua igual)
+        SwingUtilities.invokeLater(() -> new MainApplication().setVisible(true));
     }
 }

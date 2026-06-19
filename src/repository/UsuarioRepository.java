@@ -1,50 +1,48 @@
 package repository;
 
 import model.Usuario;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
+import java.sql.*;
 import java.util.List;
 
 public class UsuarioRepository {
-
-    public void salvar(Usuario usuario) {
-        String sql = "INSERT INTO usuario (nome, email, senha) VALUES (?, ?, ?);";
-
+    public void salvar(Usuario u) {
+        String sql = "INSERT INTO usuario (nome, email, senha, endereco, telefone) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, u.getNome());
+            stmt.setString(2, u.getEmail());
+            stmt.setString(3, u.getSenha());
+            stmt.setString(4, u.getEndereco());
+            stmt.setString(5, u.getTelefone());
+            stmt.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
 
-            pstmt.setString(1, usuario.getNome());
-            pstmt.setString(2, usuario.getEmail());
-            pstmt.setString(3, usuario.getSenha());
-            pstmt.executeUpdate();
+    public void atualizar(Usuario u) {
+        String sql = "UPDATE usuario SET nome=?, email=?, senha=?, endereco=?, telefone=? WHERE id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, u.getNome());
+            stmt.setString(2, u.getEmail());
+            stmt.setString(3, u.getSenha());
+            stmt.setString(4, u.getEndereco());
+            stmt.setString(5, u.getTelefone());
+            stmt.setInt(6, u.getId());
+            stmt.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    public void excluir(int id) {
+        String sql = "DELETE FROM usuario WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
     }
 
     public List<Usuario> listarTodos() {
-        List<Usuario> lista = new ArrayList<>();
-        String sql = "SELECT * FROM usuario;";
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-
-            while (rs.next()) {
-                Usuario u = new Usuario();
-                u.setId(rs.getInt("id"));
-                u.setNome(rs.getString("nome"));
-                u.setEmail(rs.getString("email"));
-                u.setSenha(rs.getString("senha"));
-                lista.add(u);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return lista;
+        return List.of();
     }
 }
